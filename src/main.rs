@@ -7,6 +7,8 @@ mod params;
 use std::{
     time::Instant,
     fs::File,
+    collections::HashMap,
+    rc::Rc,
 };
 use crate::params::{
     ParamValue,
@@ -108,17 +110,19 @@ fn main() {
     let cli_params = CliParameters::from_reader(config_file).expect("Could not parse params");
     let mut evt_handler = EventHandler::new(cli_params, WhitespaceSplitter, true);
 
-    evt_handler.attach("start", Event::Callback(Box::new(|_| {
+    let mut events: HashMap<String, Event> = HashMap::new();
+
+    events.insert(String::from("start"), Event::Callback(Rc::new(|_| {
         println!("Starting service!");
     })));
 
 
-    evt_handler.attach("exit", Event::Callback(Box::new(|_| {
+    events.insert(String::from("exit"), Event::Callback(Rc::new(|_| {
         println!("Stopping service!");
     })));
 
 
-    evt_handler.attach("show", Event::Callback(Box::new(|args| {
+    events.insert(String::from("show"), Event::Callback(Rc::new(|args| {
         match args.get(&String::from("index")) {
             Some(val) => println!("Showing value at index {}...", match val {
                 ParamValue::Int(val) => val.to_string(),
@@ -128,7 +132,7 @@ fn main() {
         };
     })));
 
-    evt_handler.attach("help", Event::InfoCallback(Box::new(|args, mut info| {
+    events.insert(String::from("help"), Event::InfoCallback(Rc::new(|args, mut info| {
         match args.get(&String::from("cmd")) {
             Some(val) => {
                 let cmd = val.to_string();
@@ -149,6 +153,8 @@ fn main() {
             },
         }
     })));
+
+    evt_handler.attach(events);
 
     evt_handler.pass_command("start".to_string()).expect("Could not pass command");
     evt_handler.pass_command("help".to_string()).expect("Could not pass command");

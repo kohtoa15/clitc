@@ -2,6 +2,7 @@ use std::{
     ops::Fn,
     collections::HashMap,
     error::Error,
+    rc::Rc,
 };
 
 use super::params::{
@@ -16,12 +17,21 @@ use super::clitc_error::{
 };
 
 type ParamResult = HashMap<String, ParamValue>;
-type CallbackFn = Fn(ParamResult) -> ();
-type InfoFn = Fn(ParamResult, HashMap<String, Vec<String>>) -> ();
+type CallbackFn = dyn Fn(ParamResult) -> ();
+type InfoFn = dyn Fn(ParamResult, HashMap<String, Vec<String>>) -> ();
 
 pub enum Event {
-    Callback(Box<CallbackFn>),
-    InfoCallback(Box<InfoFn>),
+    Callback(Rc<CallbackFn>),
+    InfoCallback(Rc<InfoFn>),
+}
+
+impl Clone for Event {
+    fn clone(&self) -> Event {
+        match self {
+            Event::Callback(f) => Event::Callback(Rc::clone(&f)),
+            Event::InfoCallback(f) => Event::InfoCallback(Rc::clone(&f)),
+        }
+    }
 }
 
 pub trait Split {
@@ -65,14 +75,14 @@ impl<S: Split> EventHandler<S> {
         return text;
     }
 
-    pub fn attach(&mut self, name: &str, event: Event) {
-        let key = name.to_string();
-        self.events.insert(key.clone(), event);
+    pub fn attach(&mut self, events: HashMap<String, Event>) {
+        self.events = events;
     }
 
-    pub fn disattach(&mut self, name: &str) {
-        let key = name.to_string();
-        self.events.remove(&key);
+    pub fn disattach(&mut self) -> HashMap<String, Event> {
+        let ret = self.events.clone();
+        self.events = HashMap::new();
+        return ret;
     }
 
     fn invoke_event(&self, key: String, args: HashMap<String, ParamValue>) -> Result<(), NoEventError> {
