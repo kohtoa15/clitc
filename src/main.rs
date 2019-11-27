@@ -108,21 +108,21 @@ fn main() {
     println!("\n\n## EventHandler ##\n");
     let config_file = File::open("D:/Dateien/tobias/data/clitc/commands.json").expect("Could not open file");
     let cli_params = CliParameters::from_reader(config_file).expect("Could not parse params");
-    let mut evt_handler = EventHandler::new(cli_params, WhitespaceSplitter, true);
+    let mut evt_handler = EventHandler::new(cli_params, WhitespaceSplitter, true, ());
 
-    let mut events: HashMap<String, Event> = HashMap::new();
+    let mut events: HashMap<String, Event<()>> = HashMap::new();
 
-    events.insert(String::from("start"), Event::Callback(Rc::new(|_| {
+    events.insert(String::from("start"), Event::Callback(Rc::new(|_, _| {
         println!("Starting service!");
     })));
 
 
-    events.insert(String::from("exit"), Event::Callback(Rc::new(|_| {
+    events.insert(String::from("exit"), Event::Callback(Rc::new(|_, _| {
         println!("Stopping service!");
     })));
 
 
-    events.insert(String::from("show"), Event::Callback(Rc::new(|args| {
+    events.insert(String::from("show"), Event::Callback(Rc::new(|_, args| {
         match args.get(&String::from("index")) {
             Some(val) => println!("Showing value at index {}...", match val {
                 ParamValue::Int(val) => val.to_string(),
@@ -132,7 +132,7 @@ fn main() {
         };
     })));
 
-    events.insert(String::from("help"), Event::InfoCallback(Rc::new(|args, mut info| {
+    events.insert(String::from("help"), Event::InfoCallback(Rc::new(|_, args, mut info| {
         match args.get(&String::from("cmd")) {
             Some(val) => {
                 let cmd = val.to_string();

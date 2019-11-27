@@ -18,19 +18,19 @@ use super::clitc_error::{
 };
 
 type ParamResult = HashMap<String, ParamValue>;
-type CallbackFn = dyn Fn(ParamResult) -> ();
-type InfoFn = dyn Fn(ParamResult, HashMap<String, Vec<String>>) -> ();
+type CallbackFn<T> = dyn Fn(T, ParamResult) -> ();
+type InfoFn<T> = dyn Fn(T, ParamResult, HashMap<String, Vec<String>>) -> ();
 type EmitHandle = Arc<Mutex<Option<String>>>;
-type EmitFn = dyn Fn(EmitHandle) -> ();
+type EmitFn<T> = dyn Fn(T, EmitHandle) -> ();
 
-pub enum Event {
-    Callback(Rc<CallbackFn>),
-    InfoCallback(Rc<InfoFn>),
-    Emit(EmitHandle, Rc<EmitFn>),
+pub enum Event<T: Clone> {
+    Callback(Rc<CallbackFn<T>>),
+    InfoCallback(Rc<InfoFn<T>>),
+    Emit(EmitHandle, Rc<EmitFn<T>>),
 }
 
-impl Clone for Event {
-    fn clone(&self) -> Event {
+impl<T: Clone> Clone for Event<T> {
+    fn clone(&self) -> Event<T> {
         match self {
             Event::Callback(f) => Event::Callback(Rc::clone(&f)),
             Event::InfoCallback(f) => Event::InfoCallback(Rc::clone(&f)),
@@ -51,22 +51,24 @@ impl Split for WhitespaceSplitter {
     }
 }
 
-pub struct EventHandler<S>
-    where S: Split
+pub struct EventHandler<S, T>
+    where S: Split, T: Clone
 {
     cli_params: CliParameters,
-    events: HashMap<String, Event>,
+    events: HashMap<String, Event<T>>,
     split_fn: S,
     single_cmd: bool,
+    context: T,
 }
 
-impl<S: Split> EventHandler<S> {
-    pub fn new(cli_params: CliParameters, split_fn: S, single_cmd: bool) -> EventHandler<S> {
+impl<S: Split, T: Clone> EventHandler<S, T> {
+    pub fn new(cli_params: CliParameters, split_fn: S, single_cmd: bool, context: T) -> EventHandler<S, T> {
         let mut event_handler = EventHandler {
             cli_params,
             events: HashMap::new(),
             split_fn,
             single_cmd,
+            context,
         };
         event_handler.cli_params.set_sequential_processing(true);
         return event_handler;
@@ -80,11 +82,11 @@ impl<S: Split> EventHandler<S> {
         return text;
     }
 
-    pub fn attach(&mut self, events: HashMap<String, Event>) {
+    pub fn attach(&mut self, events: HashMap<String, Event<T>>) {
         self.events = events;
     }
 
-    pub fn disattach(&mut self) -> HashMap<String, Event> {
+    pub fn disattach(&mut self) -> HashMap<String, Event<T>> {
         let ret = self.events.clone();
         self.events = HashMap::new();
         return ret;
@@ -94,11 +96,11 @@ impl<S: Split> EventHandler<S> {
         if let Some(evt) = self.events.get(&key) {
             // Callback function called if connected event can be found
             match evt {
-                Event::Callback(callback) => callback(args),
+                Event::Callback(callback) => callback(self.context.clone(), args),
                 // Return with  entire cmd info if requested (help cmds)
-                Event::InfoCallback(callback) => callback(args, self.get_info()),
+                Event::InfoCallback(callback) => callback(self.context.clone(), args, self.get_info()),
                 // Return emit handle
-                Event::Emit(handle, callback) => callback(Arc::clone(&handle)),
+                Event::Emit(handle, callback) => callback(self.context.clone(), Arc::clone(&handle)),
             };
         } else {
             // No Events with this identifier found
