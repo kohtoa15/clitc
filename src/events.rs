@@ -114,11 +114,8 @@ impl<S: Split> EventHandler<S> {
         }
         // Find connected events for parsed commands
         for (cmd, args) in res.into_iter() {
-            let res = self.invoke_event(cmd, args);
             // Abort if invoking throws Error
-            if let Err(e) = res {
-                return Err(Box::new(e));
-            }
+            self.invoke_event(cmd, args)?;
         }
         return Ok(());
     }

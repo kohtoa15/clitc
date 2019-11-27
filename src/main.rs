@@ -155,6 +155,7 @@ fn main() {
     })));
 
     evt_handler.attach(events);
+    let events = evt_handler.disattach();
 
     evt_handler.pass_command("start".to_string()).expect("Could not pass command");
     evt_handler.pass_command("help".to_string()).expect("Could not pass command");
