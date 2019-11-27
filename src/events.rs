@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
     error::Error,
     rc::Rc,
+    sync::{Arc, Mutex},
 };
 
 use super::params::{
@@ -19,10 +20,13 @@ use super::clitc_error::{
 type ParamResult = HashMap<String, ParamValue>;
 type CallbackFn = dyn Fn(ParamResult) -> ();
 type InfoFn = dyn Fn(ParamResult, HashMap<String, Vec<String>>) -> ();
+type EmitHandle = Arc<Mutex<Option<String>>>;
+type EmitFn = dyn Fn(EmitHandle) -> ();
 
 pub enum Event {
     Callback(Rc<CallbackFn>),
     InfoCallback(Rc<InfoFn>),
+    Emit(EmitHandle, Rc<EmitFn>),
 }
 
 impl Clone for Event {
@@ -30,6 +34,7 @@ impl Clone for Event {
         match self {
             Event::Callback(f) => Event::Callback(Rc::clone(&f)),
             Event::InfoCallback(f) => Event::InfoCallback(Rc::clone(&f)),
+            Event::Emit(h, f) => Event::Emit(Arc::clone(&h), Rc::clone(&f)),
         }
     }
 }
@@ -92,6 +97,8 @@ impl<S: Split> EventHandler<S> {
                 Event::Callback(callback) => callback(args),
                 // Return with  entire cmd info if requested (help cmds)
                 Event::InfoCallback(callback) => callback(args, self.get_info()),
+                // Return emit handle
+                Event::Emit(handle, callback) => callback(Arc::clone(&handle)),
             };
         } else {
             // No Events with this identifier found
