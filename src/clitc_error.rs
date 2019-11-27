@@ -75,7 +75,7 @@ impl Error for NoEventError {
 
 impl Display for NoEventError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "Multiple commands entered, but single command mode configured!")
+        write!(f, "No event attached to this command!")
     }
 }
 
