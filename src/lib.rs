@@ -1,8 +1,8 @@
 extern crate serde_json;
 
-mod clitc_error;
-mod events;
-mod params;
+pub mod clitc_error;
+pub mod events;
+pub mod params;
 
 use std::{
     time::Instant,
