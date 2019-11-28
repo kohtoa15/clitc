@@ -20,17 +20,17 @@ use super::clitc_error::{
 type ParamResult = HashMap<String, ParamValue>;
 type CallbackFn<T> = dyn Fn(T, ParamResult) -> ();
 type InfoFn<T> = dyn Fn(T, ParamResult, HashMap<String, Vec<String>>) -> ();
-type EmitHandle = Arc<Mutex<Option<String>>>;
-type EmitFn<T> = dyn Fn(T, EmitHandle, ParamResult) -> ();
+type EmitHandle<T> = Arc<Mutex<Option<T>>>;
+type EmitFn<T, E> = dyn Fn(T, EmitHandle<E>, ParamResult) -> ();
 
-pub enum Event<T: Clone> {
+pub enum Event<T: Clone, E> {
     Callback(Rc<CallbackFn<T>>),
     InfoCallback(Rc<InfoFn<T>>),
-    Emit(EmitHandle, Rc<EmitFn<T>>),
+    Emit(EmitHandle<E>, Rc<EmitFn<T, E>>),
 }
 
-impl<T: Clone> Clone for Event<T> {
-    fn clone(&self) -> Event<T> {
+impl<T: Clone, E> Clone for Event<T, E> {
+    fn clone(&self) -> Event<T, E> {
         match self {
             Event::Callback(f) => Event::Callback(Rc::clone(&f)),
             Event::InfoCallback(f) => Event::InfoCallback(Rc::clone(&f)),
@@ -51,18 +51,18 @@ impl Split for WhitespaceSplitter {
     }
 }
 
-pub struct EventHandler<S, T>
+pub struct EventHandler<S, T, E>
     where S: Split, T: Clone
 {
     cli_params: CliParameters,
-    events: HashMap<String, Event<T>>,
+    events: HashMap<String, Event<T, E>>,
     split_fn: S,
     single_cmd: bool,
     context: T,
 }
 
-impl<S: Split, T: Clone> EventHandler<S, T> {
-    pub fn new(cli_params: CliParameters, split_fn: S, single_cmd: bool, context: T) -> EventHandler<S, T> {
+impl<S: Split, T: Clone, E> EventHandler<S, T, E> {
+    pub fn new(cli_params: CliParameters, split_fn: S, single_cmd: bool, context: T) -> EventHandler<S, T, E> {
         let mut event_handler = EventHandler {
             cli_params,
             events: HashMap::new(),
@@ -82,11 +82,11 @@ impl<S: Split, T: Clone> EventHandler<S, T> {
         return text;
     }
 
-    pub fn attach(&mut self, events: HashMap<String, Event<T>>) {
+    pub fn attach(&mut self, events: HashMap<String, Event<T, E>>) {
         self.events = events;
     }
 
-    pub fn disattach(&mut self) -> HashMap<String, Event<T>> {
+    pub fn disattach(&mut self) -> HashMap<String, Event<T, E>> {
         let ret = self.events.clone();
         self.events = HashMap::new();
         return ret;

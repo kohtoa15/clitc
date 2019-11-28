@@ -110,7 +110,7 @@ fn main() {
     let cli_params = CliParameters::from_reader(config_file).expect("Could not parse params");
     let mut evt_handler = EventHandler::new(cli_params, WhitespaceSplitter, true, ());
 
-    let mut events: HashMap<String, Event<()>> = HashMap::new();
+    let mut events: HashMap<String, Event<(), ()>> = HashMap::new();
 
     events.insert(String::from("start"), Event::Callback(Rc::new(|_, _| {
         println!("Starting service!");
