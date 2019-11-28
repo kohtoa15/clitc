@@ -21,7 +21,7 @@ type ParamResult = HashMap<String, ParamValue>;
 type CallbackFn<T> = dyn Fn(T, ParamResult) -> ();
 type InfoFn<T> = dyn Fn(T, ParamResult, HashMap<String, Vec<String>>) -> ();
 type EmitHandle = Arc<Mutex<Option<String>>>;
-type EmitFn<T> = dyn Fn(T, EmitHandle) -> ();
+type EmitFn<T> = dyn Fn(T, EmitHandle, ParamResult) -> ();
 
 pub enum Event<T: Clone> {
     Callback(Rc<CallbackFn<T>>),
@@ -100,7 +100,7 @@ impl<S: Split, T: Clone> EventHandler<S, T> {
                 // Return with  entire cmd info if requested (help cmds)
                 Event::InfoCallback(callback) => callback(self.context.clone(), args, self.get_info()),
                 // Return emit handle
-                Event::Emit(handle, callback) => callback(self.context.clone(), Arc::clone(&handle)),
+                Event::Emit(handle, callback) => callback(self.context.clone(), Arc::clone(&handle), args),
             };
         } else {
             // No Events with this identifier found
